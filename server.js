@@ -142,10 +142,12 @@ function buildEmailHTML({ senderName, subject, body, cta, brandColor, firstName,
 
     if (stepMatch) {
       bodyHTML += `
-        <tr><td style="padding:4px 0">
+     <tr><td style="padding:4px 0">
           <table><tr>
-            <td style="width:28px;height:28px;background:${color};color:#fff;font-size:13px;font-weight:700;text-align:center;border-radius:50%;vertical-align:middle;line-height:28px">${stepMatch[1]}</td>
-            <td style="padding-left:12px;font-size:15px;color:#374151;line-height:1.6;vertical-align:middle">${stepMatch[2]}</td>
+            <td style="width:24px;vertical-align:top;padding-top:2px">
+              <div style="width:24px;height:24px;background:${color};color:#fff;font-size:13px;font-weight:700;text-align:center;border-radius:50%;line-height:28px">${stepMatch[1]}</div>
+            </td>
+            <td style="padding-left:12px;font-size:15px;color:#374151;line-height:1.6;vertical-align:top">${stepMatch[2]}</td>
           </tr></table>
         </td></tr>`;
     } else if (bulletMatch) {
