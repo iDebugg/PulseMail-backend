@@ -144,8 +144,8 @@ function buildEmailHTML({ senderName, subject, body, cta, brandColor, firstName,
       bodyHTML += `
         <tr><td style="padding:4px 0">
           <table><tr>
-            <td style="width:28px;height:28px;background:${color};color:#fff;font-size:13px;font-weight:700;text-align:center;border-radius:50%;vertical-align:top">${stepMatch[1]}</td>
-            <td style="padding-left:10px;font-size:15px;color:#374151;line-height:1.6">${stepMatch[2]}</td>
+            <td style="width:28px;height:28px;background:${color};color:#fff;font-size:13px;font-weight:700;text-align:center;border-radius:50%;vertical-align:middle;line-height:28px">${stepMatch[1]}</td>
+            <td style="padding-left:12px;font-size:15px;color:#374151;line-height:1.6;vertical-align:middle">${stepMatch[2]}</td>
           </tr></table>
         </td></tr>`;
     } else if (bulletMatch) {
@@ -165,7 +165,7 @@ function buildEmailHTML({ senderName, subject, body, cta, brandColor, firstName,
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
         <!-- Banner -->
         <tr><td style="background:${color};padding:28px 32px">
-          <div style="font-size:22px;font-weight:700;color:#ffffff">${senderName} <span style="font-weight:400;font-style:italic">Support</span></div>
+          <div style="font-size:22px;font-weight:700;color:#ffffff">${senderName}</div>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:32px">
@@ -188,10 +188,10 @@ function buildEmailHTML({ senderName, subject, body, cta, brandColor, firstName,
           ${support && support.trim() ? `
           <!-- Support Contact -->
           <table cellpadding="0" cellspacing="0" width="100%" style="margin-top:16px">
-            <tr><td style="background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;padding:14px 16px">
+            <tr><td style="background:#f4f5f8;border-radius:10px;padding:14px 16px">
               <table cellpadding="0" cellspacing="0"><tr>
-                <td style="width:36px;height:36px;background:#f3f4f6;border-radius:50%;text-align:center;vertical-align:middle">
-                  <img src="https://img.icons8.com/ios-filled/24/6b7280/phone.png" alt="phone" width="16" height="16" style="vertical-align:middle"/>
+                <td style="width:28px;height:28px;background:#f3f4f6;border-radius:50%;text-align:center;vertical-align:middle">
+                  <img src="https://img.icons8.com/ios-filled/24/6b7280/phone.png" alt="phone" width="13" height="13" style="vertical-align:middle"/>
                 </td>
                 <td style="padding-left:12px">
                   <div style="font-size:12px;font-weight:600;color:#374151">Get in touch with ${senderName}. Available 24/7.</div>
