@@ -4,7 +4,6 @@ const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Database = require("better-sqlite3");
-const nodemailer = require("nodemailer");
 const path = require("path");
 
 const app = express();
@@ -12,28 +11,7 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "pulsemail-dev-secret-change-in-production";
 
 // ─── Middleware ───
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "https://pulsemail-frontend.vercel.app"
-];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
-
-app.options("*", cors());
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 
 // ─── Database Setup ───
@@ -103,42 +81,34 @@ db.exec(`
   );
 `);
 
-// ─── Email Transporter ───
-let transporter = null;
+// ─── Resend API Key ───
+const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.SMTP_PASS || "";
 
-function setupMailer() {
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+async function sendViaResend({ from, to, cc, bcc, subject, html }) {
+  const payload = { from, to: Array.isArray(to) ? to : [to], subject, html };
+  if (cc) payload.cc = Array.isArray(cc) ? cc : [cc];
+  if (bcc) payload.bcc = Array.isArray(bcc) ? bcc : [bcc];
 
-  if (!host || !user || !pass) {
-    console.log("⚠️  SMTP not configured. Email sending will be simulated.");
-    console.log("   Copy .env.example to .env and fill in your SMTP credentials.\n");
-    return null;
-  }
-
-  const t = nodemailer.createTransport({
-    host,
-    port: parseInt(port) || 587,
-    secure: parseInt(port) === 465,
-    auth: { user, pass },
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${RESEND_API_KEY}`,
+    },
+    body: JSON.stringify(payload),
   });
 
-  // Verify connection
-  t.verify((err) => {
-    if (err) {
-      console.log("⚠️  SMTP connection failed:", err.message);
-      console.log("   Check your .env credentials.\n");
-    } else {
-      console.log("✅ SMTP connected — real emails will be sent\n");
-    }
-  });
-
-  return t;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || JSON.stringify(data));
+  return data;
 }
 
-transporter = setupMailer();
+if (RESEND_API_KEY && RESEND_API_KEY.startsWith("re_")) {
+  console.log("✅ Resend API key configured — real emails will be sent via HTTP API\n");
+} else {
+  console.log("⚠️  No Resend API key found. Email sending will be simulated.");
+  console.log("   Set RESEND_API_KEY in your environment variables.\n");
+}
 
 // ─── Auth Middleware ───
 function auth(req, res, next) {
@@ -174,8 +144,8 @@ function buildEmailHTML({ senderName, subject, body, cta, brandColor, firstName,
       bodyHTML += `
         <tr><td style="padding:4px 0">
           <table><tr>
-            <td style="width:24px;height:24px;background:${color};color:#fff;font-size:12px;font-weight:700;text-align:center;border-radius:50%;vertical-align:top">${stepMatch[1]}</td>
-            <td style="padding-left:10px;font-size:14px;color:#374151;line-height:1.6">${stepMatch[2]}</td>
+            <td style="width:28px;height:28px;background:${color};color:#fff;font-size:13px;font-weight:700;text-align:center;border-radius:50%;vertical-align:top">${stepMatch[1]}</td>
+            <td style="padding-left:10px;font-size:15px;color:#374151;line-height:1.6">${stepMatch[2]}</td>
           </tr></table>
         </td></tr>`;
     } else if (bulletMatch) {
@@ -195,7 +165,7 @@ function buildEmailHTML({ senderName, subject, body, cta, brandColor, firstName,
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
         <!-- Banner -->
         <tr><td style="background:${color};padding:28px 32px">
-          <div style="font-size:22px;font-weight:700;color:#ffffff">${senderName}</div>
+          <div style="font-size:22px;font-weight:700;color:#ffffff">${senderName} <span style="font-weight:400;font-style:italic">Support</span></div>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:32px">
@@ -218,10 +188,10 @@ function buildEmailHTML({ senderName, subject, body, cta, brandColor, firstName,
           ${support && support.trim() ? `
           <!-- Support Contact -->
           <table cellpadding="0" cellspacing="0" width="100%" style="margin-top:16px">
-            <tr><td style="background:#f4f5f8;border-radius:5px;padding:14px 16px">
+            <tr><td style="background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;padding:14px 16px">
               <table cellpadding="0" cellspacing="0"><tr>
-                <td style="width:28px;height:28px;background:#f3f4f6;border-radius:50%;text-align:center;vertical-align:middle">
-                  <img src="https://img.icons8.com/ios-filled/24/6b7280/phone.png" alt="phone" width="13" height="13" style="vertical-align:middle"/>
+                <td style="width:36px;height:36px;background:#f3f4f6;border-radius:50%;text-align:center;vertical-align:middle">
+                  <img src="https://img.icons8.com/ios-filled/24/6b7280/phone.png" alt="phone" width="16" height="16" style="vertical-align:middle"/>
                 </td>
                 <td style="padding-left:12px">
                   <div style="font-size:12px;font-weight:600;color:#374151">Get in touch with ${senderName}. Available 24/7.</div>
@@ -340,16 +310,18 @@ app.post("/api/email/send", auth, async (req, res) => {
       return res.status(400).json({ error: "Recipient, subject, and body are required" });
     }
 
-    // Parse multiple recipients
     const recipients = to.split(",").map(e => e.trim()).filter(Boolean);
     if (recipients.length === 0) {
       return res.status(400).json({ error: "At least one valid recipient is required" });
     }
 
-    // Build the HTML email
+    const resolvedSubject = subject
+      .replace("{{brand}}", senderName || req.userName)
+      .replace("{{month}}", new Date().toLocaleString("default", { month: "long" }));
+
     const html = buildEmailHTML({
       senderName: senderName || req.userName,
-      subject,
+      subject: resolvedSubject,
       body,
       cta,
       brandColor,
@@ -357,30 +329,26 @@ app.post("/api/email/send", auth, async (req, res) => {
       support,
     });
 
-    const mailOptions = {
-      from: `"${senderName || req.userName}" <${fromEmail || "onboarding@resend.dev"}>`,
-      to: recipients.join(", "),
-      cc: cc || undefined,
-      bcc: bcc || undefined,
-      subject: subject.replace("{{brand}}", senderName || req.userName).replace("{{month}}", new Date().toLocaleString("default", { month: "long" })),
-      html,
-    };
-
     let status = "sent";
     let errorMessage = null;
 
-    if (transporter) {
-      // Real email sending
+    if (RESEND_API_KEY && RESEND_API_KEY.startsWith("re_")) {
       try {
-        const info = await transporter.sendMail(mailOptions);
-        console.log(`📧 Email sent to ${to} — ID: ${info.messageId}`);
+        const result = await sendViaResend({
+          from: `${senderName || req.userName} <${fromEmail || "hello@supportpulsemail.online"}>`,
+          to: recipients,
+          cc: cc || undefined,
+          bcc: bcc || undefined,
+          subject: resolvedSubject,
+          html,
+        });
+        console.log(`📧 Email sent to ${to} — ID: ${result.id}`);
       } catch (mailErr) {
         status = "failed";
         errorMessage = mailErr.message;
         console.error(`❌ Email failed to ${to}:`, mailErr.message);
       }
     } else {
-      // Simulated sending (no SMTP configured)
       console.log(`📧 [SIMULATED] Email to ${to} — Subject: "${subject}"`);
       status = "simulated";
     }
@@ -392,7 +360,7 @@ app.post("/api/email/send", auth, async (req, res) => {
     `);
 
     for (const recipient of recipients) {
-      insertEmail.run(req.userId, recipient, cc || "", bcc || "", subject, body, senderName || req.userName, fromEmail || req.userEmail, status, errorMessage);
+      insertEmail.run(req.userId, recipient, cc || "", bcc || "", resolvedSubject, body, senderName || req.userName, fromEmail || req.userEmail, status, errorMessage);
     }
 
     if (status === "failed") {
@@ -403,7 +371,7 @@ app.post("/api/email/send", auth, async (req, res) => {
       success: true,
       status,
       message: status === "simulated"
-        ? `Email simulated (SMTP not configured). ${recipients.length} recipient(s) logged.`
+        ? `Email simulated (no API key). ${recipients.length} recipient(s) logged.`
         : `Email sent to ${recipients.length} recipient(s) successfully!`,
       recipients: recipients.length,
     });
