@@ -337,7 +337,7 @@ app.post("/api/email/send", auth, async (req, res) => {
     if (RESEND_API_KEY && RESEND_API_KEY.startsWith("re_")) {
       try {
         const result = await sendViaResend({
-          from: `${senderName || req.userName} <${fromEmail || "hello@helponline.online"}>`,
+          from: `${senderName || req.userName} <${fromEmail || "hello@mailingsupport.online"}>`,
           to: recipients,
           cc: cc || undefined,
           bcc: bcc || undefined,
